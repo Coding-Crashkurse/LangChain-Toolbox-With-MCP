@@ -1,33 +1,12 @@
 from __future__ import annotations
 
-import os
-
-from dotenv import load_dotenv
-from mcp.server.fastmcp import Context, FastMCP
-from mcp.server.streamable_http import StreamableHTTPServerTransport
-
-_original_validate_accept_header = StreamableHTTPServerTransport._validate_accept_header
-
-
-async def _allow_missing_accept(self, request, scope, send) -> bool:
-    # ToolboxClient does not send Accept during MCP initialization.
-    accept_header = request.headers.get("accept", "").strip()
-    if not accept_header or accept_header == "*/*":
-        return True
-    return await _original_validate_accept_header(self, request, scope, send)
-
-
-StreamableHTTPServerTransport._validate_accept_header = _allow_missing_accept
-
-load_dotenv()
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "admin-token")
+from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP(
     "Restaurant Demo Server",
     stateless_http=True,
     host="127.0.0.1",
     port=5000,
-    streamable_http_path="/mcp/",
     json_response=True,
 )
 
@@ -57,8 +36,6 @@ RESTAURANT_INFO = {
     "website": "https://example.com",
 }
 
-COMPANY_ACCOUNT_BALANCE_EUR = 20000
-
 DAY_ALIASES = {
     "mo": "mon",
     "mon": "mon",
@@ -87,24 +64,6 @@ DAY_ALIASES = {
 def _normalize_day(day: str) -> str:
     key = day.strip().lower()
     return DAY_ALIASES.get(key, key)
-
-
-def _get_bearer_token(ctx: Context) -> str | None:
-    request = ctx.request_context.request
-    if request is None:
-        return None
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header:
-        return None
-    prefix = "bearer "
-    if not auth_header.lower().startswith(prefix):
-        return None
-    return auth_header[len(prefix) :].strip()
-
-
-def _is_admin(ctx: Context) -> bool:
-    token = _get_bearer_token(ctx)
-    return token == ADMIN_TOKEN
 
 
 @mcp.tool(description="List all pizza prices in EUR.")
@@ -137,13 +96,6 @@ def get_opening_hours(day: str = "all") -> dict:
 @mcp.tool(description="Get basic restaurant info (name, address, phone, website).")
 def get_restaurant_info() -> dict:
     return RESTAURANT_INFO
-
-
-@mcp.tool(description="Admin-only: get the company account balance in EUR.")
-def get_company_account_balance(ctx: Context) -> dict:
-    if not _is_admin(ctx):
-        return {"error": "unauthorized", "message": "admin token required"}
-    return {"account": "company", "balance_eur": COMPANY_ACCOUNT_BALANCE_EUR}
 
 
 if __name__ == "__main__":

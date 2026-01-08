@@ -16,6 +16,7 @@ Create a `.env` file in this folder:
 ```bash
 OPENAI_API_KEY=...
 TOOLBOX_URL=http://127.0.0.1:5000
+ADMIN_TOKEN=admin-token
 ```
 
 ## Start the MCP server
@@ -35,3 +36,4 @@ Open `toolbox.ipynb` and run the cells to see:
 - load a single tool
 - LangChain agent calls via langgraph
 - LangChain model calls via bind_tools (no agent)
+- admin-only tool calls with dynamic headers

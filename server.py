@@ -1,12 +1,27 @@
 from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.streamable_http import StreamableHTTPServerTransport
+
+_original_validate_accept_header = StreamableHTTPServerTransport._validate_accept_header
+
+
+async def _allow_missing_accept(self, request, scope, send) -> bool:
+    # ToolboxClient does not send Accept during MCP initialization.
+    accept_header = request.headers.get("accept", "").strip()
+    if not accept_header or accept_header == "*/*":
+        return True
+    return await _original_validate_accept_header(self, request, scope, send)
+
+
+StreamableHTTPServerTransport._validate_accept_header = _allow_missing_accept
 
 mcp = FastMCP(
     "Restaurant Demo Server",
     stateless_http=True,
     host="127.0.0.1",
     port=5000,
+    streamable_http_path="/mcp/",
     json_response=True,
 )
 
